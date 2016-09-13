@@ -1,48 +1,84 @@
+/*
+ * @Author: iceStone
+ * @Date:   2016-01-27 10:21:56
+ * @Last Modified by:   iceStone
+ * @Last Modified time: 2016-01-27 11:08:35
+ */
+
+'use strict';
+/**
+ * 1. LESS编译 压缩 合并
+ * 2. JS合并 压缩 混淆
+ * 3. img复制
+ * 4. html压缩
+ */
+
+// 在gulpfile中先载入gulp包，因为这个包提供了一些API
 var gulp = require('gulp');
 var less = require('gulp-less');
-var path = require('path');
 var cssnano = require('gulp-cssnano');
-//测试copy任务  注册任务名为copy
-gulp.task('copy',function () {
-	console.log('开始拷贝...');
-	// gulp.src 取文件
-	//pipe  管道  传递操作过程中，执行任务（合并，压缩等相当于加工源文件）
-	//链式调用，可以多个pipe操作
-    gulp.src('style.less')  
-	  .pipe(gulp.dest('less/'));   //gulp.dest  输出文件到相应目录，如果目录不存在，创建。
-})
 
-gulp.task('test',function () {
-	//当*.less文件发生改变，copy
-	//当less文件发生改变后，会在css下面的style.css同时改变
-	 gulp.watch('*.less',['less','copy','minCss']); 
-	 // gulp.watch('*.less',['lessMin','copy']); 
-	
-})
+// 1. LESS编译 压缩 --合并没有必要，一般预处理CSS都可以导包
+gulp.task('style', function() {
+  // 这里是在执行style任务时自动执行的
+  gulp.src(['src/styles/*.less', '!src/styles/_*.less'])
+    .pipe(less())
+    .pipe(cssnano())
+    .pipe(gulp.dest('dist/styles'))
+    .pipe(browserSync.reload({
+      stream: true
+    }));
+});
 
+var concat = require('gulp-concat');
+var uglify = require('gulp-uglify');
 
-//编译less为css文件的任务
-gulp.task('less',function () {
-	console.log('编译less...');
-	 gulp.src('*.less')
-	 .pipe(less())
-	 .pipe(gulp.dest('css')); 
-})
+// 2. JS合并 压缩混淆
+gulp.task('script', function() {
+  gulp.src('src/scripts/*.js')
+    .pipe(concat('all.js'))
+    .pipe(uglify())
+    .pipe(gulp.dest('dist/scripts'))
+    .pipe(browserSync.reload({
+      stream: true
+    }));
+});
 
-//编译less为css文件的任务且压缩
-gulp.task('lessMin',function () {
-	console.log('编译less...');
-	 gulp.src('*.less')
-	 .pipe(less())
-	 .pipe(cssnano())
-	 .pipe(gulp.dest('css')); 
-})
+// 3. 图片复制
+gulp.task('image', function() {
+  gulp.src('src/images/*.*')
+    .pipe(gulp.dest('dist/images'))
+    .pipe(browserSync.reload({
+      stream: true
+    }));
+});
 
-//压缩css的任务
-gulp.task('minCss',function () {
-	console.log('压缩css...');
-	 gulp.src('css/*.css')
-	 .pipe(cssnano())
-	 .pipe(gulp.dest('css/min')); 
-})
+var htmlmin = require('gulp-htmlmin');
+// 4. HTML
+gulp.task('html', function() {
+  gulp.src('src/*.html')
+    .pipe(htmlmin({
+      collapseWhitespace: true,
+      removeComments: true
+    }))
+    .pipe(gulp.dest('dist'))
+    .pipe(browserSync.reload({
+      stream: true
+    }));
+});
 
+var browserSync = require('browser-sync');
+gulp.task('serve', function() {
+  browserSync({
+    server: {
+      baseDir: ['dist']
+    },
+  }, function(err, bs) {
+    console.log(bs.options.getIn(["urls", "local"]));
+  });
+
+  gulp.watch('src/styles/*.less',['style']);
+  gulp.watch('src/scripts/*.js',['script']);
+  gulp.watch('src/images/*.*',['image']);
+  gulp.watch('src/*.html',['html']);
+});
